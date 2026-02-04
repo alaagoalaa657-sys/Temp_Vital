@@ -6,6 +6,7 @@ using Vital.Repository.Implementations;
 using Vital.BusinessLogic.Managers;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication;
+using Vital.Web.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -75,5 +76,8 @@ app.MapGet("/logout", async (HttpContext context) =>
     await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     context.Response.Redirect("/login");
 });
+
+// Initialize database with seed data
+await DbInitializer.InitializeAsync(app.Services);
 
 app.Run();
