@@ -157,6 +157,15 @@ public class InvoiceManager
     }
 
     /// <summary>
+    /// Gets all invoices
+    /// </summary>
+    /// <returns>Collection of all invoices</returns>
+    public async Task<IEnumerable<Invoice>> GetAllInvoicesAsync()
+    {
+        return await _invoiceRepository.GetAllAsync();
+    }
+
+    /// <summary>
     /// Gets all invoices for a specific patient
     /// </summary>
     /// <param name="patientId">Patient ID</param>

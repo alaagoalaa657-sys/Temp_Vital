@@ -203,6 +203,20 @@ public class AppointmentManager
         return availableSlots;
     }
 
+    /// <summary>
+    /// Gets appointments within a date range
+    /// </summary>
+    /// <param name="startDate">Start date (inclusive)</param>
+    /// <param name="endDate">End date (inclusive)</param>
+    /// <returns>Collection of appointments within the date range</returns>
+    public async Task<List<Appointment>> GetAppointmentsByDateRangeAsync(DateTime startDate, DateTime endDate)
+    {
+        var allAppointments = await _appointmentRepository.GetAllAsync();
+        return allAppointments
+            .Where(a => a.AppointmentDate.Date >= startDate.Date && a.AppointmentDate.Date <= endDate.Date)
+            .ToList();
+    }
+
     private async Task ValidateAppointmentAsync(Appointment appointment)
     {
         if (appointment.PatientId <= 0)

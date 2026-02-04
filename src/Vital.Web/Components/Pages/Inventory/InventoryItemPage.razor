@@ -1,0 +1,330 @@
+@page "/inventory/create"
+@page "/inventory/{id:int}"
+@using Vital.BusinessLogic.Managers
+@using Vital.Domain.Entities
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+@inject InventoryManager InventoryManager
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>@(Id.HasValue ? "Edit" : "Add") Inventory Item - Vital Clinic</PageTitle>
+
+<div class="container-fluid">
+    <div class="mb-4">
+        <a href="/inventory" class="btn btn-outline-secondary btn-sm mb-2">
+            <i class="bi bi-arrow-left"></i> Back to Inventory
+        </a>
+        <h2>@(Id.HasValue ? "Edit" : "Add") Inventory Item</h2>
+    </div>
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @successMessage
+            <button type="button" class="btn-close" @onclick="@(() => successMessage = string.Empty)"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @errorMessage
+            <button type="button" class="btn-close" @onclick="@(() => errorMessage = string.Empty)"></button>
+        </div>
+    }
+
+    @if (isLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <EditForm Model="itemModel" OnValidSubmit="SaveItem">
+                            <DataAnnotationsValidator />
+                            
+                            <h5 class="border-bottom pb-2 mb-3">Basic Information</h5>
+                            
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label">Item Name *</label>
+                                    <InputText @bind-Value="itemModel.ItemName" class="form-control" placeholder="e.g., Paracetamol 500mg" />
+                                    <ValidationMessage For="@(() => itemModel.ItemName)" />
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label class="form-label">Item Code *</label>
+                                    <InputText @bind-Value="itemModel.ItemCode" class="form-control" placeholder="e.g., MED-001" />
+                                    <ValidationMessage For="@(() => itemModel.ItemCode)" />
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label class="form-label">Category *</label>
+                                    <InputSelect @bind-Value="itemModel.Category" class="form-select">
+                                        <option value="">Select...</option>
+                                        <option value="Medicine">Medicine</option>
+                                        <option value="Equipment">Equipment</option>
+                                        <option value="Supplies">Supplies</option>
+                                        <option value="Consumable">Consumable</option>
+                                        <option value="Other">Other</option>
+                                    </InputSelect>
+                                    <ValidationMessage For="@(() => itemModel.Category)" />
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label class="form-label">Unit *</label>
+                                    <InputText @bind-Value="itemModel.Unit" class="form-control" placeholder="e.g., Box, Piece, Bottle" />
+                                    <ValidationMessage For="@(() => itemModel.Unit)" />
+                                </div>
+                                
+                                <div class="col-12">
+                                    <label class="form-label">Description</label>
+                                    <InputTextArea @bind-Value="itemModel.Description" class="form-control" rows="2" placeholder="Item description..." />
+                                </div>
+                            </div>
+
+                            <h5 class="border-bottom pb-2 mb-3">Stock & Pricing</h5>
+                            
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-4">
+                                    <label class="form-label">Quantity *</label>
+                                    <InputNumber @bind-Value="itemModel.Quantity" class="form-control" min="0" />
+                                    <ValidationMessage For="@(() => itemModel.Quantity)" />
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <label class="form-label">Minimum Quantity *</label>
+                                    <InputNumber @bind-Value="itemModel.MinimumQuantity" class="form-control" min="0" />
+                                    <small class="text-muted">Alert when stock falls below this level</small>
+                                    <ValidationMessage For="@(() => itemModel.MinimumQuantity)" />
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <label class="form-label">Unit Price *</label>
+                                    <InputNumber @bind-Value="itemModel.UnitPrice" class="form-control" min="0" step="0.01" />
+                                    <ValidationMessage For="@(() => itemModel.UnitPrice)" />
+                                </div>
+                            </div>
+
+                            <h5 class="border-bottom pb-2 mb-3">Supplier & Expiry</h5>
+                            
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label">Supplier</label>
+                                    <InputText @bind-Value="itemModel.Supplier" class="form-control" placeholder="Supplier name" />
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label class="form-label">Expiry Date</label>
+                                    <InputDate @bind-Value="itemModel.ExpiryDate" class="form-control" />
+                                    <small class="text-muted">Leave empty if not applicable</small>
+                                </div>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary" disabled="@isSaving">
+                                    @if (isSaving)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                        <span>Saving...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-check-circle"></i>
+                                        <span> Save Item</span>
+                                    }
+                                </button>
+                                <a href="/inventory" class="btn btn-secondary">Cancel</a>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card shadow">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Stock Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="mb-0">
+                            <dt>Current Stock:</dt>
+                            <dd class="@(itemModel.Quantity <= itemModel.MinimumQuantity ? "text-danger" : "text-success")">
+                                <strong>@itemModel.Quantity @itemModel.Unit</strong>
+                            </dd>
+                            
+                            <dt>Minimum Stock:</dt>
+                            <dd>@itemModel.MinimumQuantity @itemModel.Unit</dd>
+                            
+                            <dt>Status:</dt>
+                            <dd>
+                                @if (itemModel.Quantity <= itemModel.MinimumQuantity)
+                                {
+                                    <span class="badge bg-danger">Low Stock</span>
+                                }
+                                else if (itemModel.Quantity <= itemModel.MinimumQuantity * 1.5)
+                                {
+                                    <span class="badge bg-warning">Moderate Stock</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Good Stock</span>
+                                }
+                            </dd>
+                            
+                            <dt>Total Value:</dt>
+                            <dd class="text-primary">
+                                <strong>$@((itemModel.Quantity * itemModel.UnitPrice).ToString("N2"))</strong>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private InventoryItemModel itemModel = new();
+    private bool isLoading = false;
+    private bool isSaving = false;
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id.HasValue)
+        {
+            await LoadItem();
+        }
+    }
+
+    private async Task LoadItem()
+    {
+        try
+        {
+            isLoading = true;
+            var item = await InventoryManager.GetItemByIdAsync(Id!.Value);
+            
+            if (item != null)
+            {
+                itemModel = new InventoryItemModel
+                {
+                    ItemName = item.ItemName,
+                    ItemCode = item.ItemCode,
+                    Category = item.Category.ToString(),
+                    Description = item.Description,
+                    Quantity = item.Quantity,
+                    MinimumQuantity = item.MinimumQuantity,
+                    UnitPrice = item.UnitPrice,
+                    Unit = item.Unit,
+                    Supplier = item.Supplier,
+                    ExpiryDate = item.ExpiryDate
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading item: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task SaveItem()
+    {
+        try
+        {
+            isSaving = true;
+            errorMessage = string.Empty;
+            successMessage = string.Empty;
+
+            if (!Enum.TryParse<ItemCategory>(itemModel.Category, out var category))
+            {
+                errorMessage = "Invalid category selected";
+                return;
+            }
+
+            var item = new InventoryItem
+            {
+                ItemName = itemModel.ItemName,
+                ItemCode = itemModel.ItemCode,
+                Category = category,
+                Description = itemModel.Description,
+                Quantity = itemModel.Quantity,
+                MinimumQuantity = itemModel.MinimumQuantity,
+                UnitPrice = itemModel.UnitPrice,
+                Unit = itemModel.Unit,
+                Supplier = itemModel.Supplier,
+                ExpiryDate = itemModel.ExpiryDate
+            };
+
+            if (Id.HasValue)
+            {
+                item.InventoryItemId = Id.Value;
+                await InventoryManager.UpdateItemAsync(item);
+                successMessage = "Inventory item updated successfully";
+            }
+            else
+            {
+                var created = await InventoryManager.CreateItemAsync(item);
+                successMessage = "Inventory item added successfully";
+                await Task.Delay(1000);
+                Navigation.NavigateTo($"/inventory/{created.InventoryItemId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error saving item: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    public class InventoryItemModel
+    {
+        [Required(ErrorMessage = "Item name is required")]
+        public string ItemName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Item code is required")]
+        public string ItemCode { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Category is required")]
+        public string Category { get; set; } = string.Empty;
+
+        public string Description { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Quantity is required")]
+        [Range(0, int.MaxValue, ErrorMessage = "Quantity must be positive")]
+        public int Quantity { get; set; }
+
+        [Required(ErrorMessage = "Minimum quantity is required")]
+        [Range(0, int.MaxValue, ErrorMessage = "Minimum quantity must be positive")]
+        public int MinimumQuantity { get; set; } = 10;
+
+        [Required(ErrorMessage = "Unit price is required")]
+        [Range(0, double.MaxValue, ErrorMessage = "Unit price must be positive")]
+        public decimal UnitPrice { get; set; }
+
+        [Required(ErrorMessage = "Unit is required")]
+        public string Unit { get; set; } = string.Empty;
+
+        public string Supplier { get; set; } = string.Empty;
+        public DateTime? ExpiryDate { get; set; }
+    }
+}

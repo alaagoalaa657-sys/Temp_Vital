@@ -1,0 +1,362 @@
+@page "/invoices/create"
+@using Vital.BusinessLogic.Managers
+@using Vital.Domain.Entities
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject InvoiceManager InvoiceManager
+@inject PatientManager PatientManager
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Create Invoice - Vital Clinic</PageTitle>
+
+<div class="container-fluid">
+    <div class="mb-4">
+        <a href="/invoices" class="btn btn-outline-secondary btn-sm mb-2">
+            <i class="bi bi-arrow-left"></i> Back to Invoices
+        </a>
+        <h2>Create New Invoice</h2>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @errorMessage
+            <button type="button" class="btn-close" @onclick="@(() => errorMessage = string.Empty)"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-body">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Patient *</label>
+                            <select class="form-select" @bind="selectedPatientId">
+                                <option value="0">Select Patient...</option>
+                                @foreach (var patient in patients)
+                                {
+                                    <option value="@patient.PatientId">@patient.FullName - @patient.PhoneNumber</option>
+                                }
+                                }
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label class="form-label">Invoice Date</label>
+                            <input type="date" class="form-control" @bind="invoiceDate" />
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label class="form-label">Due Date</label>
+                            <input type="date" class="form-control" @bind="dueDate" />
+                        </div>
+                    </div>
+
+                    @if (selectedPatient != null)
+                    {
+                        <div class="alert alert-info mb-4">
+                            <strong>Patient:</strong> @selectedPatient.FullName<br />
+                            <strong>Phone:</strong> @selectedPatient.PhoneNumber<br />
+                            <strong>Email:</strong> @selectedPatient.Email
+                        </div>
+                    }
+
+                    <h5 class="border-bottom pb-2 mb-3">Invoice Items</h5>
+
+                    @for (int i = 0; i < invoiceItems.Count; i++)
+                    {
+                        var index = i;
+                        var item = invoiceItems[index];
+                        
+                        <div class="row g-3 mb-3 align-items-end border-bottom pb-3">
+                            <div class="col-md-5">
+                                <label class="form-label">Description</label>
+                                <input type="text" class="form-control" placeholder="Service/Item description" 
+                                       @bind="item.Description" @oninput="@(e => UpdateItemDescription(index, e.Value?.ToString() ?? ""))" />
+                            </div>
+                            
+                            <div class="col-md-2">
+                                <label class="form-label">Quantity</label>
+                                <input type="number" class="form-control" min="1" 
+                                       @bind="item.Quantity" @oninput="@(e => UpdateItemQuantity(index, e.Value?.ToString() ?? "1"))" />
+                            </div>
+                            
+                            <div class="col-md-2">
+                                <label class="form-label">Unit Price</label>
+                                <input type="number" class="form-control" min="0" step="0.01" 
+                                       @bind="item.UnitPrice" @oninput="@(e => UpdateItemPrice(index, e.Value?.ToString() ?? "0"))" />
+                            </div>
+                            
+                            <div class="col-md-2">
+                                <label class="form-label">Total</label>
+                                <input type="text" class="form-control" value="@item.Total.ToString("N2")" readonly />
+                            </div>
+                            
+                            <div class="col-md-1">
+                                <button type="button" class="btn btn-danger btn-sm w-100" @onclick="() => RemoveItem(index)">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    }
+
+                    <button type="button" class="btn btn-outline-primary mb-4" @onclick="AddItem">
+                        <i class="bi bi-plus-circle"></i> Add Item
+                    </button>
+
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" rows="2" placeholder="Additional notes..." @bind="notes"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Invoice Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Sub Total:</span>
+                        <strong>$@subTotal.ToString("N2")</strong>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <label class="form-label small">Tax (%):</label>
+                        <input type="number" class="form-control form-control-sm" min="0" max="100" step="0.1" 
+                               @bind="taxPercent" @oninput="CalculateTotals" />
+                        <small class="text-muted">Tax Amount: $@tax.ToString("N2")</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label small">Discount ($):</label>
+                        <input type="number" class="form-control form-control-sm" min="0" step="0.01" 
+                               @bind="discount" @oninput="CalculateTotals" />
+                    </div>
+                    
+                    <hr />
+                    
+                    <div class="d-flex justify-content-between mb-3">
+                        <strong>Total Amount:</strong>
+                        <h4 class="mb-0 text-primary">${@totalAmount.ToString("N2")}</h4>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary" @onclick="HandleCreateInvoice" disabled="@(isCreating || selectedPatientId == 0 || !invoiceItems.Any())">
+                            @if (isCreating)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2"></span>
+                                <span>Creating...</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-check-circle"></i>
+                                <span> Create Invoice</span>
+                            }
+                        </button>
+                        <a href="/invoices" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">Common Services</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-sm btn-outline-secondary" @onclick='() => AddQuickItem("General Consultation", 50)'>
+                            General Consultation - $50
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick='() => AddQuickItem("Follow-up Visit", 30)'>
+                            Follow-up Visit - $30
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick='() => AddQuickItem("Lab Test", 75)'>
+                            Lab Test - $75
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick='() => AddQuickItem("X-Ray", 100)'>
+                            X-Ray - $100
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Patient> patients = new();
+    private Patient? selectedPatient;
+    private int selectedPatientId = 0;
+    private DateTime invoiceDate = DateTime.Today;
+    private DateTime? dueDate = DateTime.Today.AddDays(30);
+    private List<InvoiceItemModel> invoiceItems = new();
+    private string notes = string.Empty;
+    
+    private decimal subTotal = 0;
+    private decimal taxPercent = 0;
+    private decimal tax = 0;
+    private decimal discount = 0;
+    private decimal totalAmount = 0;
+    
+    private bool isCreating = false;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPatients();
+        AddItem();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (selectedPatientId > 0 && (selectedPatient == null || selectedPatient.PatientId != selectedPatientId))
+        {
+            selectedPatient = await PatientManager.GetPatientByIdAsync(selectedPatientId);
+        }
+    }
+
+    private async Task LoadPatients()
+    {
+        try
+        {
+            patients = (await PatientManager.GetAllPatientsAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading patients: {ex.Message}";
+        }
+    }
+
+    private void AddItem()
+    {
+        invoiceItems.Add(new InvoiceItemModel());
+    }
+
+    private void AddQuickItem(string description, decimal price)
+    {
+        invoiceItems.Add(new InvoiceItemModel 
+        { 
+            Description = description, 
+            Quantity = 1, 
+            UnitPrice = price,
+            Total = price
+        });
+        CalculateTotals();
+    }
+
+    private void RemoveItem(int index)
+    {
+        if (invoiceItems.Count > 1)
+        {
+            invoiceItems.RemoveAt(index);
+            CalculateTotals();
+        }
+    }
+
+    private void UpdateItemDescription(int index, string value)
+    {
+        invoiceItems[index].Description = value;
+    }
+
+    private void UpdateItemQuantity(int index, string value)
+    {
+        if (int.TryParse(value, out int quantity))
+        {
+            invoiceItems[index].Quantity = quantity;
+            invoiceItems[index].Total = invoiceItems[index].Quantity * invoiceItems[index].UnitPrice;
+            CalculateTotals();
+        }
+    }
+
+    private void UpdateItemPrice(int index, string value)
+    {
+        if (decimal.TryParse(value, out decimal price))
+        {
+            invoiceItems[index].UnitPrice = price;
+            invoiceItems[index].Total = invoiceItems[index].Quantity * invoiceItems[index].UnitPrice;
+            CalculateTotals();
+        }
+    }
+
+    private void CalculateTotals()
+    {
+        subTotal = invoiceItems.Sum(i => i.Total);
+        tax = subTotal * (taxPercent / 100);
+        totalAmount = subTotal + tax - discount;
+        
+        if (totalAmount < 0) totalAmount = 0;
+        
+        StateHasChanged();
+    }
+
+    private async Task HandleCreateInvoice()
+    {
+        try
+        {
+            isCreating = true;
+            errorMessage = string.Empty;
+
+            if (selectedPatientId == 0)
+            {
+                errorMessage = "Please select a patient";
+                return;
+            }
+
+            if (!invoiceItems.Any() || invoiceItems.All(i => string.IsNullOrWhiteSpace(i.Description)))
+            {
+                errorMessage = "Please add at least one invoice item";
+                return;
+            }
+
+            var invoice = new Invoice
+            {
+                PatientId = selectedPatientId,
+                InvoiceDate = invoiceDate,
+                DueDate = dueDate,
+                SubTotal = subTotal,
+                Tax = tax,
+                Discount = discount,
+                TotalAmount = totalAmount,
+                Notes = notes,
+                Status = InvoiceStatus.Pending
+            };
+
+            var items = invoiceItems
+                .Where(i => !string.IsNullOrWhiteSpace(i.Description))
+                .Select(i => new InvoiceItem
+                {
+                    Description = i.Description,
+                    Quantity = i.Quantity,
+                    UnitPrice = i.UnitPrice,
+                    Total = i.Total
+                })
+                .ToList();
+
+            invoice.Items = items;
+
+            var createdInvoice = await InvoiceManager.CreateInvoiceAsync(invoice);
+            Navigation.NavigateTo("/invoices");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error creating invoice: {ex.Message}";
+        }
+        finally
+        {
+            isCreating = false;
+        }
+    }
+
+    public class InvoiceItemModel
+    {
+        public string Description { get; set; } = string.Empty;
+        public int Quantity { get; set; } = 1;
+        public decimal UnitPrice { get; set; } = 0;
+        public decimal Total { get; set; } = 0;
+    }
+}

@@ -34,8 +34,32 @@ build_property.EnableCodeStyleSeverity =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9BcHAucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
+[/home/runner/work/Temp_Vital/Temp_Vital/src/Vital.Web/Components/Pages/AccessDenied.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9BY2Nlc3NEZW5pZWQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/runner/work/Temp_Vital/Temp_Vital/src/Vital.Web/Components/Pages/Appointments/AppointmentList.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9BcHBvaW50bWVudHMvQXBwb2ludG1lbnRMaXN0LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/runner/work/Temp_Vital/Temp_Vital/src/Vital.Web/Components/Pages/Appointments/ScheduleAppointment.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9BcHBvaW50bWVudHMvU2NoZWR1bGVBcHBvaW50bWVudC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/runner/work/Temp_Vital/Temp_Vital/src/Vital.Web/Components/Pages/Billing/CreateInvoice.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9CaWxsaW5nL0NyZWF0ZUludm9pY2UucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/runner/work/Temp_Vital/Temp_Vital/src/Vital.Web/Components/Pages/Billing/InvoiceList.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9CaWxsaW5nL0ludm9pY2VMaXN0LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
 [/home/runner/work/Temp_Vital/Temp_Vital/src/Vital.Web/Components/Pages/Counter.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Db3VudGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/runner/work/Temp_Vital/Temp_Vital/src/Vital.Web/Components/Pages/Dashboard.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9EYXNoYm9hcmQucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
 [/home/runner/work/Temp_Vital/Temp_Vital/src/Vital.Web/Components/Pages/Error.razor]
@@ -46,8 +70,32 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Ib21lLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
+[/home/runner/work/Temp_Vital/Temp_Vital/src/Vital.Web/Components/Pages/Inventory/InventoryItemPage.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9JbnZlbnRvcnkvSW52ZW50b3J5SXRlbVBhZ2UucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/runner/work/Temp_Vital/Temp_Vital/src/Vital.Web/Components/Pages/Inventory/InventoryList.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9JbnZlbnRvcnkvSW52ZW50b3J5TGlzdC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/runner/work/Temp_Vital/Temp_Vital/src/Vital.Web/Components/Pages/Login.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Mb2dpbi5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
 [/home/runner/work/Temp_Vital/Temp_Vital/src/Vital.Web/Components/Pages/NotFound.razor]
 build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9Ob3RGb3VuZC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/runner/work/Temp_Vital/Temp_Vital/src/Vital.Web/Components/Pages/Patients/CreatePatient.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9QYXRpZW50cy9DcmVhdGVQYXRpZW50LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/runner/work/Temp_Vital/Temp_Vital/src/Vital.Web/Components/Pages/Patients/PatientDetails.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9QYXRpZW50cy9QYXRpZW50RGV0YWlscy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/runner/work/Temp_Vital/Temp_Vital/src/Vital.Web/Components/Pages/Patients/PatientList.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9QYWdlcy9QYXRpZW50cy9QYXRpZW50TGlzdC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
 [/home/runner/work/Temp_Vital/Temp_Vital/src/Vital.Web/Components/Pages/Weather.razor]

@@ -1,0 +1,317 @@
+@page "/appointments/schedule"
+@using Vital.BusinessLogic.Managers
+@using Vital.Domain.Entities
+@using Vital.Repository.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Receptionist,Admin")]
+@inject AppointmentManager AppointmentManager
+@inject PatientManager PatientManager
+@inject IDoctorRepository DoctorRepository
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Schedule Appointment - Vital Clinic</PageTitle>
+
+<div class="container-fluid">
+    <div class="mb-4">
+        <a href="/appointments" class="btn btn-outline-secondary btn-sm mb-2">
+            <i class="bi bi-arrow-left"></i> Back to Appointments
+        </a>
+        <h2>Schedule New Appointment</h2>
+    </div>
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @successMessage
+            <button type="button" class="btn-close" @onclick="@(() => successMessage = string.Empty)"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @errorMessage
+            <button type="button" class="btn-close" @onclick="@(() => errorMessage = string.Empty)"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-body">
+                    <EditForm Model="appointment" OnValidSubmit="HandleScheduleAppointment">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">Patient *</label>
+                                <InputSelect @bind-Value="appointment.PatientId" class="form-select" @onchange="OnPatientChanged">
+                                    <option value="0">Select Patient...</option>
+                                    @foreach (var patient in patients)
+                                    {
+                                        <option value="@patient.PatientId">@patient.FullName - @patient.PhoneNumber</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => appointment.PatientId)" />
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label">Doctor *</label>
+                                <InputSelect @bind-Value="appointment.DoctorId" class="form-select">
+                                    <option value="0">Select Doctor...</option>
+                                    @foreach (var doctor in doctors)
+                                    {
+                                        <option value="@doctor.DoctorId">@doctor.User?.FullName - @doctor.Specialization</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => appointment.DoctorId)" />
+                            </div>
+                        </div>
+
+                        @if (selectedPatient != null)
+                        {
+                            <div class="alert alert-info mb-4">
+                                <strong>Patient Info:</strong><br />
+                                Name: @selectedPatient.FullName<br />
+                                Age: @CalculateAge(selectedPatient.DateOfBirth) years<br />
+                                Phone: @selectedPatient.PhoneNumber<br />
+                                Blood Type: @selectedPatient.BloodType
+                            </div>
+                        }
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label">Appointment Date *</label>
+                                <InputDate @bind-Value="appointment.AppointmentDate" class="form-control" />
+                                <ValidationMessage For="@(() => appointment.AppointmentDate)" />
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label class="form-label">Appointment Time *</label>
+                                <input type="time" class="form-control" value="@appointmentTimeString" 
+                                       @onchange="@((ChangeEventArgs e) => appointmentTimeString = e.Value?.ToString() ?? "09:00")" />
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label class="form-label">Duration (minutes) *</label>
+                                <InputNumber @bind-Value="appointment.DurationMinutes" class="form-control" min="15" max="240" step="15" />
+                                <ValidationMessage For="@(() => appointment.DurationMinutes)" />
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">Reason for Visit *</label>
+                            <InputTextArea @bind-Value="appointment.Reason" class="form-control" rows="2" placeholder="Brief description of the reason for visit" />
+                            <ValidationMessage For="@(() => appointment.Reason)" />
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">Notes</label>
+                            <InputTextArea @bind-Value="appointment.Notes" class="form-control" rows="3" placeholder="Additional notes or instructions" />
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary" disabled="@isScheduling">
+                                @if (isScheduling)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                    <span>Scheduling...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-calendar-check"></i>
+                                    <span> Schedule Appointment</span>
+                                }
+                            </button>
+                            <a href="/appointments" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Available Time Slots</h5>
+                </div>
+                <div class="card-body">
+                    @if (appointment.DoctorId > 0 && appointment.AppointmentDate >= DateTime.Today)
+                    {
+                        <p class="small text-muted">Suggested available times:</p>
+                        <div class="d-grid gap-2">
+                            @foreach (var slot in suggestedTimeSlots)
+                            {
+                                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => SelectTimeSlot(slot)">
+                                    @slot.ToString(@"hh\:mm tt")
+                                </button>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted small">Select a doctor and date to view available time slots</p>
+                    }
+                </div>
+            </div>
+
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Tips</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="small mb-0">
+                        <li>Standard appointment duration is 30 minutes</li>
+                        <li>Allow 15 minutes between appointments</li>
+                        <li>Check patient's medical history before scheduling</li>
+                        <li>Confirm appointment time with patient</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private AppointmentModel appointment = new() 
+    { 
+        AppointmentDate = DateTime.Today.AddDays(1),
+        DurationMinutes = 30
+    };
+    private List<Patient> patients = new();
+    private List<Doctor> doctors = new();
+    private Patient? selectedPatient;
+    private List<TimeSpan> suggestedTimeSlots = new();
+    private string appointmentTimeString = "09:00";
+    private bool isScheduling = false;
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        GenerateTimeSlots();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            patients = (await PatientManager.GetAllPatientsAsync()).ToList();
+            doctors = (await DoctorRepository.GetAllAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading data: {ex.Message}";
+        }
+    }
+
+    private async Task OnPatientChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int patientId) && patientId > 0)
+        {
+            selectedPatient = await PatientManager.GetPatientByIdAsync(patientId);
+        }
+        else
+        {
+            selectedPatient = null;
+        }
+    }
+
+    private void GenerateTimeSlots()
+    {
+        suggestedTimeSlots.Clear();
+        var startTime = new TimeSpan(9, 0, 0);
+        var endTime = new TimeSpan(17, 0, 0);
+        
+        for (var time = startTime; time < endTime; time = time.Add(TimeSpan.FromMinutes(30)))
+        {
+            suggestedTimeSlots.Add(time);
+        }
+    }
+
+    private void SelectTimeSlot(TimeSpan timeSlot)
+    {
+        appointmentTimeString = timeSlot.ToString(@"hh\:mm");
+    }
+
+    private async Task HandleScheduleAppointment()
+    {
+        try
+        {
+            isScheduling = true;
+            errorMessage = string.Empty;
+            successMessage = string.Empty;
+
+            if (!TimeSpan.TryParse(appointmentTimeString, out var appointmentTime))
+            {
+                errorMessage = "Invalid time format";
+                return;
+            }
+
+            if (appointment.AppointmentDate < DateTime.Today)
+            {
+                errorMessage = "Appointment date cannot be in the past";
+                return;
+            }
+
+            var newAppointment = new Appointment
+            {
+                PatientId = appointment.PatientId,
+                DoctorId = appointment.DoctorId,
+                AppointmentDate = appointment.AppointmentDate,
+                AppointmentTime = appointmentTime,
+                DurationMinutes = appointment.DurationMinutes,
+                Reason = appointment.Reason,
+                Notes = appointment.Notes,
+                Status = AppointmentStatus.Scheduled
+            };
+
+            var scheduled = await AppointmentManager.ScheduleAppointmentAsync(newAppointment);
+            successMessage = "Appointment scheduled successfully!";
+            
+            await Task.Delay(1500);
+            Navigation.NavigateTo("/appointments");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error scheduling appointment: {ex.Message}";
+        }
+        finally
+        {
+            isScheduling = false;
+        }
+    }
+
+    private int CalculateAge(DateTime dateOfBirth)
+    {
+        var today = DateTime.Today;
+        var age = today.Year - dateOfBirth.Year;
+        if (dateOfBirth.Date > today.AddYears(-age)) age--;
+        return age;
+    }
+
+    public class AppointmentModel
+    {
+        [Required(ErrorMessage = "Patient is required")]
+        [Range(1, int.MaxValue, ErrorMessage = "Please select a patient")]
+        public int PatientId { get; set; }
+
+        [Required(ErrorMessage = "Doctor is required")]
+        [Range(1, int.MaxValue, ErrorMessage = "Please select a doctor")]
+        public int DoctorId { get; set; }
+
+        [Required(ErrorMessage = "Appointment date is required")]
+        public DateTime AppointmentDate { get; set; }
+
+        [Required(ErrorMessage = "Duration is required")]
+        [Range(15, 240, ErrorMessage = "Duration must be between 15 and 240 minutes")]
+        public int DurationMinutes { get; set; }
+
+        [Required(ErrorMessage = "Reason is required")]
+        public string Reason { get; set; } = string.Empty;
+
+        public string Notes { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,218 @@
+@page "/invoices"
+@using Vital.BusinessLogic.Managers
+@using Vital.Domain.Entities
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject InvoiceManager InvoiceManager
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Invoices - Vital Clinic</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Invoices</h2>
+        <a href="/invoices/create" class="btn btn-primary">
+            <i class="bi bi-receipt"></i> Create Invoice
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" @bind="filterStatus">
+                        <option value="">All Statuses</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Paid">Paid</option>
+                        <option value="PartiallyPaid">Partially Paid</option>
+                        <option value="Cancelled">Cancelled</option>
+                        <option value="Overdue">Overdue</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Patient Name</label>
+                    <input type="text" class="form-control" placeholder="Search patient..." @bind="searchPatient" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-primary w-100" @onclick="LoadInvoices">
+                        <i class="bi bi-funnel"></i> Filter
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            @errorMessage
+        </div>
+    }
+    else
+    {
+        <div class="card shadow">
+            <div class="card-body">
+                @if (invoices.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Invoice #</th>
+                                    <th>Date</th>
+                                    <th>Patient</th>
+                                    <th>Sub Total</th>
+                                    <th>Tax</th>
+                                    <th>Discount</th>
+                                    <th>Total</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var invoice in invoices)
+                                {
+                                    <tr>
+                                        <td><strong>@invoice.InvoiceNumber</strong></td>
+                                        <td>@invoice.InvoiceDate.ToShortDateString()</td>
+                                        <td>@invoice.Patient?.FullName</td>
+                                        <td>$@invoice.SubTotal.ToString("N2")</td>
+                                        <td>$@invoice.Tax.ToString("N2")</td>
+                                        <td>$@invoice.Discount.ToString("N2")</td>
+                                        <td><strong>$@invoice.TotalAmount.ToString("N2")</strong></td>
+                                        <td>
+                                            <span class="badge bg-@GetStatusColor(invoice.Status)">
+                                                @FormatStatus(invoice.Status)
+                                            </span>
+                                        </td>
+                                        <td>
+                                            @if (invoice.Status == InvoiceStatus.Pending || invoice.Status == InvoiceStatus.PartiallyPaid)
+                                            {
+                                                <button class="btn btn-sm btn-success" @onclick="() => MarkAsPaid(invoice.InvoiceId)">
+                                                    <i class="bi bi-check-circle"></i> Mark Paid
+                                                </button>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-secondary">
+                                    <td colspan="6" class="text-end"><strong>Total:</strong></td>
+                                    <td><strong>$@invoices.Sum(i => i.TotalAmount).ToString("N2")</strong></td>
+                                    <td colspan="2"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-3 text-muted">
+                        Showing @invoices.Count invoice(s)
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-receipt fs-1 text-muted"></i>
+                        <p class="text-muted mt-2">No invoices found</p>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Invoice> invoices = new();
+    private string filterStatus = string.Empty;
+    private string searchPatient = string.Empty;
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInvoices();
+    }
+
+    private async Task LoadInvoices()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+            
+            var allInvoices = (await InvoiceManager.GetAllInvoicesAsync()).ToList();
+            
+            invoices = allInvoices;
+            
+            if (!string.IsNullOrEmpty(filterStatus) && Enum.TryParse<InvoiceStatus>(filterStatus, out var status))
+            {
+                invoices = invoices.Where(i => i.Status == status).ToList();
+            }
+            
+            if (!string.IsNullOrEmpty(searchPatient))
+            {
+                invoices = invoices.Where(i => 
+                    i.Patient != null && 
+                    i.Patient.FullName.Contains(searchPatient, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+            
+            invoices = invoices.OrderByDescending(i => i.InvoiceDate).ToList();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading invoices: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task MarkAsPaid(int invoiceId)
+    {
+        try
+        {
+            await InvoiceManager.MarkAsPaidAsync(invoiceId, "Cash");
+            await LoadInvoices();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error updating invoice: {ex.Message}";
+        }
+    }
+
+    private string GetStatusColor(InvoiceStatus status)
+    {
+        return status switch
+        {
+            InvoiceStatus.Pending => "warning",
+            InvoiceStatus.Paid => "success",
+            InvoiceStatus.PartiallyPaid => "info",
+            InvoiceStatus.Cancelled => "secondary",
+            InvoiceStatus.Overdue => "danger",
+            _ => "secondary"
+        };
+    }
+
+    private string FormatStatus(InvoiceStatus status)
+    {
+        return status switch
+        {
+            InvoiceStatus.PartiallyPaid => "Partially Paid",
+            _ => status.ToString()
+        };
+    }
+}

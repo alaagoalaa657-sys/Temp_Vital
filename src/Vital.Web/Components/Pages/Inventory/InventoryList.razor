@@ -1,0 +1,216 @@
+@page "/inventory"
+@using Vital.BusinessLogic.Managers
+@using Vital.Domain.Entities
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Admin")]
+@inject InventoryManager InventoryManager
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Inventory - Vital Clinic</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Inventory Management</h2>
+        <a href="/inventory/create" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Add Item
+        </a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" @bind="filterCategory">
+                        <option value="">All Categories</option>
+                        <option value="Medicine">Medicine</option>
+                        <option value="Equipment">Equipment</option>
+                        <option value="Supplies">Supplies</option>
+                        <option value="Consumable">Consumable</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-control" placeholder="Search by name or code..." @bind="searchTerm" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Show Low Stock</label>
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" @bind="showLowStockOnly" />
+                        <label class="form-check-label">Low Stock Only</label>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-primary w-100" @onclick="LoadInventory">
+                        <i class="bi bi-funnel"></i> Filter
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            @errorMessage
+        </div>
+    }
+    else
+    {
+        @if (lowStockCount > 0)
+        {
+            <div class="alert alert-warning" role="alert">
+                <i class="bi bi-exclamation-triangle"></i>
+                <strong>Warning:</strong> @lowStockCount item(s) are at or below minimum stock level.
+            </div>
+        }
+
+        <div class="card shadow">
+            <div class="card-body">
+                @if (items.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Item Name</th>
+                                    <th>Category</th>
+                                    <th>Quantity</th>
+                                    <th>Min Qty</th>
+                                    <th>Unit Price</th>
+                                    <th>Unit</th>
+                                    <th>Supplier</th>
+                                    <th>Expiry Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in items)
+                                {
+                                    <tr class="@(item.Quantity <= item.MinimumQuantity ? "table-warning" : "")">
+                                        <td><strong>@item.ItemCode</strong></td>
+                                        <td>
+                                            @item.ItemName
+                                            @if (item.Quantity <= item.MinimumQuantity)
+                                            {
+                                                <span class="badge bg-danger ms-2">Low Stock</span>
+                                            }
+                                        </td>
+                                        <td>@item.Category</td>
+                                        <td>
+                                            <strong class="@(item.Quantity <= item.MinimumQuantity ? "text-danger" : "")">
+                                                @item.Quantity
+                                            </strong>
+                                        </td>
+                                        <td>@item.MinimumQuantity</td>
+                                        <td>$@item.UnitPrice.ToString("N2")</td>
+                                        <td>@item.Unit</td>
+                                        <td>@item.Supplier</td>
+                                        <td>
+                                            @if (item.ExpiryDate.HasValue)
+                                            {
+                                                var daysToExpiry = (item.ExpiryDate.Value - DateTime.Today).Days;
+                                                <span class="@(daysToExpiry < 30 ? "text-danger" : "")">
+                                                    @item.ExpiryDate.Value.ToShortDateString()
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">N/A</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            <a href="/inventory/@item.InventoryItemId" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-3 d-flex justify-content-between">
+                        <span class="text-muted">Showing @items.Count item(s)</span>
+                        <span class="text-muted">Total Value: $@items.Sum(i => i.Quantity * i.UnitPrice).ToString("N2")</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-box-seam fs-1 text-muted"></i>
+                        <p class="text-muted mt-2">No inventory items found</p>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<InventoryItem> items = new();
+    private string filterCategory = string.Empty;
+    private string searchTerm = string.Empty;
+    private bool showLowStockOnly = false;
+    private int lowStockCount = 0;
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInventory();
+    }
+
+    private async Task LoadInventory()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+            
+            var allItems = await InventoryManager.GetAllItemsAsync();
+            
+            items = allItems.ToList();
+            
+            if (!string.IsNullOrEmpty(filterCategory) && Enum.TryParse<ItemCategory>(filterCategory, out var category))
+            {
+                items = items.Where(i => i.Category == category).ToList();
+            }
+            
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                items = items.Where(i => 
+                    i.ItemName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                    i.ItemCode.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+            
+            if (showLowStockOnly)
+            {
+                items = items.Where(i => i.Quantity <= i.MinimumQuantity).ToList();
+            }
+            
+            lowStockCount = allItems.Count(i => i.Quantity <= i.MinimumQuantity);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading inventory: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

@@ -25,6 +25,19 @@ public class InventoryManager
     }
 
     /// <summary>
+    /// Gets an inventory item by ID
+    /// </summary>
+    /// <param name="itemId">Inventory item ID</param>
+    /// <returns>Inventory item or null if not found</returns>
+    public async Task<InventoryItem?> GetItemByIdAsync(int itemId)
+    {
+        if (itemId <= 0)
+            throw new ArgumentException("Inventory item ID must be greater than zero", nameof(itemId));
+        
+        return await _inventoryRepository.GetByIdAsync(itemId);
+    }
+
+    /// <summary>
     /// Gets inventory items with low stock (below minimum quantity)
     /// </summary>
     /// <returns>Collection of low stock items</returns>
