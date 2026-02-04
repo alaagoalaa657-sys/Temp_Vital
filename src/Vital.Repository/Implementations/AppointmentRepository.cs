@@ -95,11 +95,12 @@ public class AppointmentRepository : IAppointmentRepository
 
         var appointments = await query.ToListAsync();
 
+        const int defaultDuration = 30;
         foreach (var appointment in appointments)
         {
             var appointmentStart = appointment.AppointmentTime;
             var appointmentEnd = appointmentStart.Add(TimeSpan.FromMinutes(appointment.DurationMinutes));
-            var newEnd = time.Add(TimeSpan.FromMinutes(30));
+            var newEnd = time.Add(TimeSpan.FromMinutes(defaultDuration));
 
             if ((time >= appointmentStart && time < appointmentEnd) ||
                 (newEnd > appointmentStart && newEnd <= appointmentEnd) ||

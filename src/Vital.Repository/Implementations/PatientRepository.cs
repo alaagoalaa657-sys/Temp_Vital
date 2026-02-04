@@ -32,7 +32,7 @@ public class PatientRepository : IPatientRepository
         return await _context.Patients
             .Where(p => p.FullName.Contains(searchTerm) || 
                        p.PhoneNumber.Contains(searchTerm) ||
-                       p.Email.Contains(searchTerm))
+                       (p.Email != null && p.Email.Contains(searchTerm)))
             .OrderBy(p => p.FullName)
             .ToListAsync();
     }

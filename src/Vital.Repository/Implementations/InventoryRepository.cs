@@ -52,7 +52,7 @@ public class InventoryRepository : IInventoryRepository
         return await _context.InventoryItems
             .Where(i => i.ItemName.Contains(searchTerm) || 
                        i.ItemCode.Contains(searchTerm) ||
-                       i.Description.Contains(searchTerm))
+                       (i.Description != null && i.Description.Contains(searchTerm)))
             .OrderBy(i => i.ItemName)
             .ToListAsync();
     }
