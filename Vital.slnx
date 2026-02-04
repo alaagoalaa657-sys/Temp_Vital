@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Vital.BusinessLogic/Vital.BusinessLogic.csproj" />
+    <Project Path="src/Vital.Domain/Vital.Domain.csproj" />
+    <Project Path="src/Vital.Repository/Vital.Repository.csproj" />
+    <Project Path="src/Vital.Web/Vital.Web.csproj" />
+  </Folder>
+</Solution>
