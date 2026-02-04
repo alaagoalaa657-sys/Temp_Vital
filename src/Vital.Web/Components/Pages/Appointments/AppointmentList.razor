@@ -1,0 +1,224 @@
+@page "/appointments"
+@using Vital.BusinessLogic.Managers
+@using Vital.Domain.Entities
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject AppointmentManager AppointmentManager
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@rendermode InteractiveServer
+
+<PageTitle>Appointments - Vital Clinic</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Appointments</h2>
+        @if (canSchedule)
+        {
+            <a href="/appointments/schedule" class="btn btn-primary">
+                <i class="bi bi-calendar-plus"></i> Schedule Appointment
+            </a>
+        }
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">From Date</label>
+                    <input type="date" class="form-control" @bind="fromDate" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">To Date</label>
+                    <input type="date" class="form-control" @bind="toDate" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" @bind="filterStatus">
+                        <option value="">All Statuses</option>
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="Confirmed">Confirmed</option>
+                        <option value="InProgress">In Progress</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                        <option value="NoShow">No Show</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-primary w-100" @onclick="LoadAppointments">
+                        <i class="bi bi-funnel"></i> Filter
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger" role="alert">
+            @errorMessage
+        </div>
+    }
+    else
+    {
+        <div class="card shadow">
+            <div class="card-body">
+                @if (appointments.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Patient</th>
+                                    <th>Doctor</th>
+                                    <th>Duration</th>
+                                    <th>Status</th>
+                                    <th>Reason</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var apt in appointments)
+                                {
+                                    <tr>
+                                        <td>@apt.AppointmentId</td>
+                                        <td>@apt.AppointmentDate.ToShortDateString()</td>
+                                        <td>@apt.AppointmentTime.ToString(@"hh\:mm")</td>
+                                        <td>
+                                            <a href="/patients/@apt.PatientId">@apt.Patient?.FullName</a>
+                                        </td>
+                                        <td>@apt.Doctor?.User?.FullName</td>
+                                        <td>@apt.DurationMinutes min</td>
+                                        <td>
+                                            <span class="badge bg-@GetStatusColor(apt.Status)">
+                                                @FormatStatus(apt.Status)
+                                            </span>
+                                        </td>
+                                        <td>@apt.Reason</td>
+                                        <td>
+                                            @if (apt.Status == AppointmentStatus.Scheduled || apt.Status == AppointmentStatus.Confirmed)
+                                            {
+                                                <button class="btn btn-sm btn-outline-danger" @onclick="() => CancelAppointment(apt.AppointmentId)">
+                                                    <i class="bi bi-x-circle"></i> Cancel
+                                                </button>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-3 text-muted">
+                        Showing @appointments.Count appointment(s)
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-5">
+                        <i class="bi bi-calendar-x fs-1 text-muted"></i>
+                        <p class="text-muted mt-2">No appointments found</p>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Appointment> appointments = new();
+    private DateTime fromDate = DateTime.Today;
+    private DateTime toDate = DateTime.Today.AddMonths(1);
+    private string filterStatus = string.Empty;
+    private bool isLoading = true;
+    private bool canSchedule = false;
+    private string errorMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var roleString = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+        
+        canSchedule = roleString == "Receptionist" || roleString == "Admin";
+        
+        await LoadAppointments();
+    }
+
+    private async Task LoadAppointments()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+            
+            var allAppointments = await AppointmentManager.GetAppointmentsByDateRangeAsync(fromDate, toDate);
+            
+            if (!string.IsNullOrEmpty(filterStatus) && Enum.TryParse<AppointmentStatus>(filterStatus, out var status))
+            {
+                appointments = allAppointments.Where(a => a.Status == status).ToList();
+            }
+            else
+            {
+                appointments = allAppointments;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error loading appointments: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task CancelAppointment(int appointmentId)
+    {
+        try
+        {
+            await AppointmentManager.CancelAppointmentAsync(appointmentId);
+            await LoadAppointments();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error cancelling appointment: {ex.Message}";
+        }
+    }
+
+    private string GetStatusColor(AppointmentStatus status)
+    {
+        return status switch
+        {
+            AppointmentStatus.Scheduled => "primary",
+            AppointmentStatus.Confirmed => "info",
+            AppointmentStatus.InProgress => "warning",
+            AppointmentStatus.Completed => "success",
+            AppointmentStatus.Cancelled => "danger",
+            AppointmentStatus.NoShow => "secondary",
+            _ => "secondary"
+        };
+    }
+
+    private string FormatStatus(AppointmentStatus status)
+    {
+        return status switch
+        {
+            AppointmentStatus.InProgress => "In Progress",
+            AppointmentStatus.NoShow => "No Show",
+            _ => status.ToString()
+        };
+    }
+}

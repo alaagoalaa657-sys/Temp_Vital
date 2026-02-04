@@ -1,0 +1,272 @@
+@page "/"
+@page "/dashboard"
+@using Vital.BusinessLogic.Managers
+@using Vital.Domain.Entities
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject PatientManager PatientManager
+@inject AppointmentManager AppointmentManager
+@inject InvoiceManager InvoiceManager
+@inject InventoryManager InventoryManager
+@inject AuthenticationStateProvider AuthStateProvider
+@rendermode InteractiveServer
+
+<PageTitle>Dashboard - Vital Clinic</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Dashboard</h2>
+        <div class="text-muted">
+            <i class="bi bi-person-circle"></i> Welcome, @userName
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @if (userRole == UserRole.Doctor || userRole == UserRole.Admin)
+            {
+                <div class="col-md-6 col-lg-3">
+                    <div class="card bg-primary text-white shadow">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-title mb-1">Today's Appointments</h6>
+                                    <h2 class="mb-0">@todayAppointments</h2>
+                                </div>
+                                <i class="bi bi-calendar-check fs-1"></i>
+                            </div>
+                            <a href="/appointments" class="text-white text-decoration-none small mt-2 d-block">
+                                View all <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (userRole == UserRole.Receptionist || userRole == UserRole.Admin)
+            {
+                <div class="col-md-6 col-lg-3">
+                    <div class="card bg-success text-white shadow">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-title mb-1">Total Patients</h6>
+                                    <h2 class="mb-0">@totalPatients</h2>
+                                </div>
+                                <i class="bi bi-people fs-1"></i>
+                            </div>
+                            <a href="/patients" class="text-white text-decoration-none small mt-2 d-block">
+                                View all <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <div class="col-md-6 col-lg-3">
+                <div class="card bg-warning text-dark shadow">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title mb-1">Pending Invoices</h6>
+                                <h2 class="mb-0">@pendingInvoices</h2>
+                            </div>
+                            <i class="bi bi-receipt fs-1"></i>
+                        </div>
+                        <a href="/invoices" class="text-dark text-decoration-none small mt-2 d-block">
+                            View all <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            @if (userRole == UserRole.Admin)
+            {
+                <div class="col-md-6 col-lg-3">
+                    <div class="card bg-danger text-white shadow">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-title mb-1">Low Stock Items</h6>
+                                    <h2 class="mb-0">@lowStockItems</h2>
+                                </div>
+                                <i class="bi bi-exclamation-triangle fs-1"></i>
+                            </div>
+                            <a href="/inventory" class="text-white text-decoration-none small mt-2 d-block">
+                                View all <i class="bi bi-arrow-right"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-lg-8">
+                <div class="card shadow">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">Recent Appointments</h5>
+                    </div>
+                    <div class="card-body">
+                        @if (recentAppointments.Any())
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Time</th>
+                                            <th>Patient</th>
+                                            <th>Doctor</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var apt in recentAppointments)
+                                        {
+                                            <tr>
+                                                <td>@apt.AppointmentDate.ToShortDateString()</td>
+                                                <td>@apt.AppointmentTime.ToString(@"hh\:mm")</td>
+                                                <td>@apt.Patient?.FullName</td>
+                                                <td>@apt.Doctor?.User?.FullName</td>
+                                                <td>
+                                                    <span class="badge bg-@GetStatusColor(apt.Status)">
+                                                        @apt.Status
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center py-3">No recent appointments</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card shadow">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">Quick Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            @if (userRole == UserRole.Receptionist || userRole == UserRole.Admin)
+                            {
+                                <a href="/patients/create" class="btn btn-outline-primary">
+                                    <i class="bi bi-person-plus"></i> Add New Patient
+                                </a>
+                                <a href="/appointments/schedule" class="btn btn-outline-success">
+                                    <i class="bi bi-calendar-plus"></i> Schedule Appointment
+                                </a>
+                            }
+                            <a href="/invoices/create" class="btn btn-outline-warning">
+                                <i class="bi bi-receipt"></i> Create Invoice
+                            </a>
+                            @if (userRole == UserRole.Admin)
+                            {
+                                <a href="/inventory/create" class="btn btn-outline-info">
+                                    <i class="bi bi-box"></i> Add Inventory Item
+                                </a>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private string userName = string.Empty;
+    private UserRole userRole;
+    private int todayAppointments = 0;
+    private int totalPatients = 0;
+    private int pendingInvoices = 0;
+    private int lowStockItems = 0;
+    private List<Appointment> recentAppointments = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            userName = user.FindFirst("FullName")?.Value ?? user.Identity?.Name ?? "User";
+            var roleString = user.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+            
+            if (!string.IsNullOrEmpty(roleString) && Enum.TryParse<UserRole>(roleString, out var role))
+            {
+                userRole = role;
+            }
+
+            await LoadDashboardData();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading dashboard: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadDashboardData()
+    {
+        var today = DateTime.Today;
+        
+        var appointments = await AppointmentManager.GetAppointmentsByDateRangeAsync(today, today.AddDays(1));
+        todayAppointments = appointments.Count();
+
+        var allPatients = await PatientManager.GetAllPatientsAsync();
+        totalPatients = allPatients.Count();
+
+        var allInvoices = await InvoiceManager.GetAllInvoicesAsync();
+        pendingInvoices = allInvoices.Count(i => i.Status == InvoiceStatus.Pending || i.Status == InvoiceStatus.Overdue);
+
+        if (userRole == UserRole.Admin)
+        {
+            var allItems = await InventoryManager.GetAllItemsAsync();
+            lowStockItems = allItems.Count(i => i.Quantity <= i.MinimumQuantity);
+        }
+
+        var allAppointments = await AppointmentManager.GetAppointmentsByDateRangeAsync(
+            DateTime.Today.AddDays(-7), 
+            DateTime.Today.AddDays(7));
+        recentAppointments = allAppointments
+            .OrderByDescending(a => a.AppointmentDate)
+            .ThenByDescending(a => a.AppointmentTime)
+            .Take(10)
+            .ToList();
+    }
+
+    private string GetStatusColor(AppointmentStatus status)
+    {
+        return status switch
+        {
+            AppointmentStatus.Scheduled => "primary",
+            AppointmentStatus.Confirmed => "info",
+            AppointmentStatus.InProgress => "warning",
+            AppointmentStatus.Completed => "success",
+            AppointmentStatus.Cancelled => "danger",
+            AppointmentStatus.NoShow => "secondary",
+            _ => "secondary"
+        };
+    }
+}

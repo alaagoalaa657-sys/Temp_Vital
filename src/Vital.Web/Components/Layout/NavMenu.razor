@@ -1,0 +1,99 @@
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">
+            <i class="bi bi-hospital"></i> Vital Clinic
+        </a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column">
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </NavLink>
+                </div>
+
+                <AuthorizeView Roles="Receptionist,Admin" Context="receptionistAuth">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="patients">
+                            <i class="bi bi-people"></i> Patients
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="appointments">
+                        <i class="bi bi-calendar-check"></i> Appointments
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="invoices">
+                        <i class="bi bi-receipt"></i> Invoices
+                    </NavLink>
+                </div>
+
+                <AuthorizeView Roles="Admin" Context="adminAuth">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="inventory">
+                            <i class="bi bi-box-seam"></i> Inventory
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+
+                <hr class="my-2" />
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="counter">
+                        <i class="bi bi-plus-square-fill-nav-menu"></i> Counter
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="weather">
+                        <i class="bi bi-list-nested-nav-menu"></i> Weather
+                    </NavLink>
+                </div>
+
+                <hr class="my-2" />
+
+                <div class="nav-item px-3">
+                    <div class="nav-link text-muted small">
+                        <i class="bi bi-person-circle"></i> @context.User.FindFirst("FullName")?.Value
+                    </div>
+                </div>
+
+                <div class="nav-item px-3">
+                    <button class="nav-link btn btn-link" @onclick="Logout">
+                        <i class="bi bi-box-arrow-right"></i> Logout
+                    </button>
+                </div>
+            </Authorized>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="login">
+                        <i class="bi bi-box-arrow-in-right"></i> Login
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+    </nav>
+</div>
+
+@code {
+    private async Task Logout()
+    {
+        Navigation.NavigateTo("/logout", true);
+    }
+}
+

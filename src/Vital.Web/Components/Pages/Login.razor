@@ -1,0 +1,134 @@
+@page "/login"
+@using Vital.BusinessLogic.Managers
+@using Vital.Domain.Entities
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@inject AuthenticationManager AuthManager
+@inject NavigationManager Navigation
+@inject IHttpContextAccessor HttpContextAccessor
+
+<PageTitle>Login - Vital Clinic</PageTitle>
+
+<div class="container">
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <h3 class="text-center mb-4">
+                        <i class="bi bi-hospital"></i> Vital Clinic
+                    </h3>
+                    <h5 class="text-center mb-4">Login</h5>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @errorMessage
+                        </div>
+                    }
+
+                    <EditForm Model="loginModel" OnValidSubmit="HandleLogin">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <InputText id="username" @bind-Value="loginModel.Username" class="form-control" placeholder="Enter username" />
+                            <ValidationMessage For="@(() => loginModel.Username)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <InputText id="password" @bind-Value="loginModel.Password" type="password" class="form-control" placeholder="Enter password" />
+                            <ValidationMessage For="@(() => loginModel.Password)" />
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary" disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                    <span>Logging in...</span>
+                                }
+                                else
+                                {
+                                    <span>Login</span>
+                                }
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+            
+            <div class="text-center mt-3 text-muted">
+                <small>Demo: admin/Admin@123 | doctor1/Doctor@123 | rec1/Rec@123</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginModel loginModel = new();
+    private string errorMessage = string.Empty;
+    private bool isLoading = false;
+
+    private async Task HandleLogin()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+
+            var user = await AuthManager.AuthenticateAsync(loginModel.Username, loginModel.Password);
+
+            if (user == null)
+            {
+                errorMessage = "Invalid username or password";
+                return;
+            }
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Role, user.Role.ToString()),
+                new Claim("FullName", user.FullName)
+            };
+
+            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var authProperties = new AuthenticationProperties
+            {
+                IsPersistent = true,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8)
+            };
+
+            var httpContext = HttpContextAccessor.HttpContext;
+            if (httpContext != null)
+            {
+                await httpContext.SignInAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    new ClaimsPrincipal(claimsIdentity),
+                    authProperties);
+
+                Navigation.NavigateTo("/", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    public class LoginModel
+    {
+        [Required(ErrorMessage = "Username is required")]
+        public string Username { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Password is required")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

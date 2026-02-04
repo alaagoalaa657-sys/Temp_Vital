@@ -1,0 +1,202 @@
+@page "/patients/create"
+@using Vital.BusinessLogic.Managers
+@using Vital.Domain.Entities
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Receptionist,Admin")]
+@inject PatientManager PatientManager
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Create Patient - Vital Clinic</PageTitle>
+
+<div class="container-fluid">
+    <div class="mb-4">
+        <a href="/patients" class="btn btn-outline-secondary btn-sm mb-2">
+            <i class="bi bi-arrow-left"></i> Back to Patients
+        </a>
+        <h2>Create New Patient</h2>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @errorMessage
+            <button type="button" class="btn-close" @onclick="@(() => errorMessage = string.Empty)"></button>
+        </div>
+    }
+
+    <div class="row">
+        <div class="col-lg-10 col-xl-8">
+            <div class="card shadow">
+                <div class="card-body">
+                    <EditForm Model="newPatient" OnValidSubmit="HandleCreatePatient">
+                        <DataAnnotationsValidator />
+                        
+                        <h5 class="border-bottom pb-2 mb-3">Personal Information</h5>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">Full Name *</label>
+                                <InputText @bind-Value="newPatient.FullName" class="form-control" placeholder="John Doe" />
+                                <ValidationMessage For="@(() => newPatient.FullName)" />
+                            </div>
+                            
+                            <div class="col-md-3">
+                                <label class="form-label">Date of Birth *</label>
+                                <InputDate @bind-Value="newPatient.DateOfBirth" class="form-control" />
+                                <ValidationMessage For="@(() => newPatient.DateOfBirth)" />
+                            </div>
+                            
+                            <div class="col-md-3">
+                                <label class="form-label">Gender *</label>
+                                <InputSelect @bind-Value="newPatient.Gender" class="form-select">
+                                    <option value="">Select...</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </InputSelect>
+                                <ValidationMessage For="@(() => newPatient.Gender)" />
+                            </div>
+                        </div>
+
+                        <h5 class="border-bottom pb-2 mb-3">Contact Information</h5>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">Phone Number *</label>
+                                <InputText @bind-Value="newPatient.PhoneNumber" class="form-control" placeholder="+1234567890" />
+                                <ValidationMessage For="@(() => newPatient.PhoneNumber)" />
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <InputText @bind-Value="newPatient.Email" type="email" class="form-control" placeholder="john@example.com" />
+                            </div>
+                            
+                            <div class="col-12">
+                                <label class="form-label">Address</label>
+                                <InputTextArea @bind-Value="newPatient.Address" class="form-control" rows="2" placeholder="123 Main St, City, State ZIP" />
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label">Emergency Contact *</label>
+                                <InputText @bind-Value="newPatient.EmergencyContact" class="form-control" placeholder="Name: +Phone" />
+                                <ValidationMessage For="@(() => newPatient.EmergencyContact)" />
+                            </div>
+                        </div>
+
+                        <h5 class="border-bottom pb-2 mb-3">Medical Information</h5>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label">Blood Type</label>
+                                <InputSelect @bind-Value="newPatient.BloodType" class="form-select">
+                                    <option value="">Select...</option>
+                                    <option value="A+">A+</option>
+                                    <option value="A-">A-</option>
+                                    <option value="B+">B+</option>
+                                    <option value="B-">B-</option>
+                                    <option value="AB+">AB+</option>
+                                    <option value="AB-">AB-</option>
+                                    <option value="O+">O+</option>
+                                    <option value="O-">O-</option>
+                                </InputSelect>
+                            </div>
+                            
+                            <div class="col-12">
+                                <label class="form-label">Allergies</label>
+                                <InputTextArea @bind-Value="newPatient.Allergies" class="form-control" rows="2" placeholder="List any known allergies..." />
+                            </div>
+                            
+                            <div class="col-12">
+                                <label class="form-label">Medical History</label>
+                                <InputTextArea @bind-Value="newPatient.MedicalHistory" class="form-control" rows="3" placeholder="Previous conditions, surgeries, etc..." />
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary" disabled="@isCreating">
+                                @if (isCreating)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                    <span>Creating...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-check-circle"></i>
+                                    <span> Create Patient</span>
+                                }
+                            </button>
+                            <a href="/patients" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private PatientModel newPatient = new();
+    private bool isCreating = false;
+    private string errorMessage = string.Empty;
+
+    private async Task HandleCreatePatient()
+    {
+        try
+        {
+            isCreating = true;
+            errorMessage = string.Empty;
+
+            var patient = new Patient
+            {
+                FullName = newPatient.FullName,
+                DateOfBirth = newPatient.DateOfBirth,
+                Gender = newPatient.Gender,
+                PhoneNumber = newPatient.PhoneNumber,
+                Email = newPatient.Email,
+                Address = newPatient.Address,
+                EmergencyContact = newPatient.EmergencyContact,
+                BloodType = newPatient.BloodType,
+                Allergies = newPatient.Allergies,
+                MedicalHistory = newPatient.MedicalHistory
+            };
+
+            var createdPatient = await PatientManager.CreatePatientAsync(patient);
+            Navigation.NavigateTo($"/patients/{createdPatient.PatientId}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error creating patient: {ex.Message}";
+        }
+        finally
+        {
+            isCreating = false;
+        }
+    }
+
+    public class PatientModel
+    {
+        [Required(ErrorMessage = "Full name is required")]
+        public string FullName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Date of birth is required")]
+        public DateTime DateOfBirth { get; set; } = DateTime.Today.AddYears(-30);
+
+        [Required(ErrorMessage = "Gender is required")]
+        public string Gender { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Phone number is required")]
+        public string PhoneNumber { get; set; } = string.Empty;
+
+        public string Email { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Emergency contact is required")]
+        public string EmergencyContact { get; set; } = string.Empty;
+
+        public string BloodType { get; set; } = string.Empty;
+        public string Allergies { get; set; } = string.Empty;
+        public string MedicalHistory { get; set; } = string.Empty;
+    }
+}
