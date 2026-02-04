@@ -152,8 +152,5 @@ public class InventoryManager
 
         if (string.IsNullOrWhiteSpace(item.Unit))
             throw new ArgumentException("Unit is required", nameof(item.Unit));
-
-        if (item.ExpiryDate.HasValue && item.ExpiryDate.Value < DateTime.Today)
-            throw new ArgumentException("Expiry date cannot be in the past", nameof(item.ExpiryDate));
     }
 }

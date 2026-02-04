@@ -130,7 +130,23 @@ public class PatientManager
         if (string.IsNullOrWhiteSpace(patient.Email))
             throw new ArgumentException("Email is required", nameof(patient.Email));
 
-        if (!patient.Email.Contains("@"))
+        if (!IsValidEmail(patient.Email))
             throw new ArgumentException("Invalid email format", nameof(patient.Email));
+    }
+
+    private bool IsValidEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return false;
+
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
