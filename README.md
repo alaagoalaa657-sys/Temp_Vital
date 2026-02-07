@@ -1,4 +1,4 @@
-# Vital - Clinic Management System (تحت التطوير)
+# Vital - Clinic Management System (Under development)
 
 A comprehensive web-based clinic management system built with C# Blazor Server and SQL Server. This system digitizes and streamlines the daily operations of medical clinics, managing patient records, appointments, billing, and inventory.
 
